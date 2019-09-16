@@ -1,0 +1,18 @@
+[
+  {
+    "user": "ron",
+    "password": "waxhtwoord",
+    "deviceId": 23,
+    "roles": [
+      "YES"
+    ]
+  },
+  {
+    "user": "test",
+    "password": "passs",
+    "deviceId": 1,
+    "roles": [
+      "YES"
+    ]
+  }
+]

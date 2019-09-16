@@ -8,6 +8,7 @@ import io.javalin.http.Handler
 import io.javalin.http.staticfiles.Location
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.slf4j.LoggerFactory
+import java.io.FileInputStream
 import java.time.Instant
 import java.time.ZoneId
 import javax.json.Json
@@ -27,20 +28,20 @@ object Auth {
 
     private val Context.userRoles: List<ApiRoles>
         get() = this.basicAuthCredentials()?.let { (username, password) ->
-            userRoleMap[Pair(username, password)] ?: listOf()
+            findUser(username, password)
         } ?: listOf()
 
-    private val userRoleMap = hashMapOf(
-        Pair("alice", "weak-password") to listOf(ApiRoles.NO),
-        Pair("bob", "better-password") to listOf(ApiRoles.YES),
-        Pair("ron", "waxhtwoord") to listOf(ApiRoles.YES)
-    )
+    fun findUser(username: String, password: String) : List<ApiRoles> {
+        return usersList.filter { it.username == username && it.password == password }.firstOrNull()?.roles ?: listOf<ApiRoles>()
+    }
 }
 
 var lastseen = OwnTrackResponse()
 
 fun main() {
 
+    Json.createReader(FileInputStream("users.json")).readArray().forEach { usersList.add(User().fromJson(it.asJsonObject())) }
+    println(usersList.size)
     Mqtt.connect()
 
     val app = Javalin.create {

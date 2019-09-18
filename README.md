@@ -4,12 +4,16 @@ http gateway from owntrack to domoticz
 When Domoticz is setup with an Mqtt broker it will publish all action on the topic `domoticz/out`
 and it will listen on the topic `domoticz/in`. This little server will listen as a REST endpoint server on port 7000
 and publish location updates to mqtt broker.
+
+
 Example of the Mqtt message:
 ```json
 {"command":"switchlight","idx":23,"switchcmd":"On"}
 ```
 
 Idx should be linked to a virtual switch in domoticz. 
+The location reporting is based on the regions of Opentrack. Define a region called **home**. If the opentrack 
+location contains the ```inregions=[home]```, the switchcmd will be "On" otherwise it will be "Off".
 
 The server can support multiple users. They are defined in a json file:
 ```json

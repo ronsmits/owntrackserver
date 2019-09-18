@@ -39,13 +39,3 @@ class User() {
         return this
     }
 }
-
-fun main() {
-    val array = Json.createArrayBuilder().add(User("ron", "test", 1).toJson()).build()
-    println(array)
-    val x = User().fromJson(User("ron", "test", 1).toJson())
-    println(x.toJson())
-
-    array.forEach { usersList.add(User().fromJson(it.asJsonObject())) }
-}
-

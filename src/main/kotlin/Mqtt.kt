@@ -2,15 +2,16 @@ import org.eclipse.paho.client.mqttv3.*
 import org.slf4j.LoggerFactory
 
 object Mqtt {
-
+    lateinit var broker: String
     val logger = LoggerFactory.getLogger(Mqtt::class.java)
 
     val client by lazy {
         logger.info("setting up client")
-        MqttClient("tcp://domoticz.home:1883", "owntrack-server")
+        MqttClient(broker, "owntrack-server")
     }
 
-    fun connect() {
+    fun connect(broker: String) {
+        this.broker = broker
         try {
             client.setCallback(object : MqttCallbackExtended {
                 override fun connectComplete(p0: Boolean, p1: String?) {
@@ -26,7 +27,7 @@ object Mqtt {
                 }
 
                 override fun deliveryComplete(p0: IMqttDeliveryToken?) {
-                    logger.info("message delivered ${p0?.message}")
+                    logger.debug("message delivered")
                 }
 
             })

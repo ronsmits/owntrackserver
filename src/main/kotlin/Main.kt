@@ -6,12 +6,16 @@ import io.javalin.core.security.SecurityUtil.roles
 import io.javalin.http.Context
 import io.javalin.http.Handler
 import io.javalin.http.staticfiles.Location
+import joptsimple.OptionParser
+import org.apache.commons.codec.digest.Crypt
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.slf4j.LoggerFactory
+import java.io.File
 import java.io.FileInputStream
 import java.time.Instant
 import java.time.ZoneId
 import javax.json.Json
+import kotlin.system.exitProcess
 
 private val logger = LoggerFactory.getLogger("main")
 
@@ -28,21 +32,32 @@ object Auth {
 
     private val Context.userRoles: List<ApiRoles>
         get() = this.basicAuthCredentials()?.let { (username, password) ->
-            findUser(username, password)
+            findUser(username, Crypt.crypt(password, username))
         } ?: listOf()
 
     fun findUser(username: String, password: String) : List<ApiRoles> {
-        return usersList.filter { it.username == username && it.password == password }.firstOrNull()?.roles ?: listOf<ApiRoles>()
+        return usersList.filter { it.username == username && it.password == password }.firstOrNull()?.roles ?: listOf()
     }
 }
 
 var lastseen = OwnTrackResponse()
 
-fun main() {
+fun main(args: Array<String>) {
+    val parser = OptionParser()
+    with (parser) {
+        accepts("m").withRequiredArg().ofType(String::class.java).describedAs("address of the mqtt broker")
+        accepts("f").withRequiredArg().ofType(String::class.java).describedAs("users.json file")
+    }
+    val optionset = parser.parse(*args)
+    if(!optionset.has("m") || !optionset.has("f")) {
+        parser.printHelpOn(System.err)
+        exitProcess(0)
+    }
+    val mqttBroker = optionset.valueOf("m") as String
+    val userfile = optionset.valueOf("f") as String
 
-    Json.createReader(FileInputStream("users.json")).readArray().forEach { usersList.add(User().fromJson(it.asJsonObject())) }
-    println(usersList.size)
-    Mqtt.connect()
+    Json.createReader(FileInputStream(userfile)).readArray().forEach { usersList.add(User().fromJson(it.asJsonObject())) }
+    Mqtt.connect(mqttBroker)
 
     val app = Javalin.create {
         it.accessManager(Auth::accessManager)

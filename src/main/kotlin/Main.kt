@@ -4,6 +4,7 @@ import io.javalin.core.security.Role
 import io.javalin.core.security.SecurityUtil.roles
 import io.javalin.http.Context
 import io.javalin.http.Handler
+import io.javalin.http.staticfiles.Location
 import joptsimple.OptionParser
 import org.apache.commons.codec.digest.Crypt
 import org.eclipse.paho.client.mqttv3.MqttMessage
@@ -63,6 +64,7 @@ fun main(args: Array<String>) {
     val app = Javalin.create {
         it.contextPath = optionset.valueOf("c") as String
         it.accessManager(Auth::accessManager)
+        it.addStaticFiles("root", Location.CLASSPATH)
     }.apply {
         exception(Exception::class.java) { e, ctx -> e.printStackTrace() }
         error(404) { ctx -> ctx.json("not found") }

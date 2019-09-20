@@ -4,7 +4,7 @@
     "password": "roVAGbu4tTvR2",
     "deviceId": 23,
     "roles": [
-      "YES"
+      "REPORT"
     ]
   },
   {
@@ -12,7 +12,7 @@
     "password": "passs",
     "deviceId": 1,
     "roles": [
-      "YES"
+      "REPORT"
     ]
   }
 ]

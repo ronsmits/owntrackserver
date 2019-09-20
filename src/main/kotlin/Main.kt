@@ -1,16 +1,13 @@
 import io.javalin.Javalin
-import io.javalin.apibuilder.ApiBuilder.get
 import io.javalin.apibuilder.ApiBuilder.post
 import io.javalin.core.security.Role
 import io.javalin.core.security.SecurityUtil.roles
 import io.javalin.http.Context
 import io.javalin.http.Handler
-import io.javalin.http.staticfiles.Location
 import joptsimple.OptionParser
 import org.apache.commons.codec.digest.Crypt
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.slf4j.LoggerFactory
-import java.io.File
 import java.io.FileInputStream
 import java.time.Instant
 import java.time.ZoneId
@@ -19,13 +16,12 @@ import kotlin.system.exitProcess
 
 private val logger = LoggerFactory.getLogger("main")
 
-enum class ApiRoles : Role { NO, YES }
+enum class ApiRoles : Role { NO, REPORT }
 object Auth {
 
     fun accessManager(handler: Handler, ctx: Context, permittedRoles: Set<Role>) {
         when {
-            ctx.userRoles.contains(ApiRoles.YES) -> handler.handle(ctx)
-            ctx.path() == "/last" -> handler.handle(ctx)
+            ctx.userRoles.any { it in permittedRoles } -> handler.handle(ctx)
             else -> ctx.status(401).json("not permitted")
         }
     }
@@ -35,55 +31,52 @@ object Auth {
             findUser(username, Crypt.crypt(password, username))
         } ?: listOf()
 
-    fun findUser(username: String, password: String) : List<ApiRoles> {
+    fun findUser(username: String, password: String): List<ApiRoles> {
         return usersList.filter { it.username == username && it.password == password }.firstOrNull()?.roles ?: listOf()
     }
 }
 
-var lastseen = OwnTrackResponse()
 
 fun main(args: Array<String>) {
     val parser = OptionParser()
-    with (parser) {
-        accepts("m").withRequiredArg().ofType(String::class.java).describedAs("address of the mqtt broker")
-        accepts("f").withRequiredArg().ofType(String::class.java).describedAs("users.json file")
+    with(parser) {
+        accepts("m").withOptionalArg().ofType(String::class.java).describedAs("address of the mqtt broker")
+            .defaultsTo("tcp://127.0.0.1:1883")
+        accepts("f").withOptionalArg().ofType(String::class.java).describedAs("users.json file")
+            .defaultsTo("users.json")
+        accepts("c").withOptionalArg().ofType(String::class.java).describedAs("Context root defaults to '/'")
+            .defaultsTo("")
     }
     val optionset = parser.parse(*args)
-    if(!optionset.has("m") || !optionset.has("f")) {
+    if (!optionset.has("m") || !optionset.has("f")) {
         parser.printHelpOn(System.err)
         exitProcess(0)
     }
-    val mqttBroker = optionset.valueOf("m") as String
-    val userfile = optionset.valueOf("f") as String
-
-    Json.createReader(FileInputStream(userfile)).readArray().forEach { usersList.add(User().fromJson(it.asJsonObject())) }
-    Mqtt.connect(mqttBroker)
+    logger.info(
+        "args: -f ${optionset.valueOf("f") as String} -m  ${optionset.valueOf("m") as String} -c ${optionset.valueOf(
+            "c") as String}"
+    )
+    Json.createReader(FileInputStream(optionset.valueOf("f") as String)).readArray()
+        .forEach { usersList.add(User().fromJson(it.asJsonObject())) }
+    Mqtt.connect(optionset.valueOf("m") as String)
 
     val app = Javalin.create {
+        it.contextPath = optionset.valueOf("c") as String
         it.accessManager(Auth::accessManager)
-        it.addStaticFiles("/root", Location.CLASSPATH)
     }.apply {
-
         exception(Exception::class.java) { e, ctx -> e.printStackTrace() }
         error(404) { ctx -> ctx.json("not found") }
     }.start(7000)
 
     app.routes {
-        get("/un-secured", { ctx -> ctx.result("Hello") }, roles(ApiRoles.NO))
-        post("/loc", { ctx -> handleLoc(ctx) }, roles(ApiRoles.YES))
-        get("/last", { ctx ->
-            ctx.result(lastseen.toJsonString())
-        }, roles(ApiRoles.NO))
-
+        post("/loc", { ctx -> handleLoc(ctx) }, roles(ApiRoles.REPORT))
     }
 }
 
 fun handleLoc(ctx: Context) {
-    lastseen = ctx.body<OwnTrackResponse>()
-    logger.info("body is $lastseen at ${lastseen.datetime}")
-    if (lastseen.inregions.contains("home")) {
-        sendRegionUpdate(lastseen.tid, lastseen.inregions.contains("home"))
-    }
+    val receivedLocaton = ctx.body<OwnTrackResponse>()
+    logger.info("body is $receivedLocaton at ${receivedLocaton.datetime}")
+    sendRegionUpdate(receivedLocaton.tid, receivedLocaton.inregions.contains("home"))
     ctx.result("[]")
 
 }
@@ -114,8 +107,8 @@ data class OwnTrackResponse(
     val datetime
         get() = Instant.ofEpochSecond(tst).atZone(ZoneId.systemDefault()).toLocalDateTime()
 
-    fun toJsonString(): String {
-        val factory = Json.createObjectBuilder().add(
+    fun toGeoJsonString(): String {
+        val geoJson = Json.createObjectBuilder().add(
             "geometry",
             Json.createObjectBuilder().add("type", "Point").add(
                 "coordinates",
@@ -123,6 +116,6 @@ data class OwnTrackResponse(
             )
         ).add("type", "Feature").add("properties", Json.createObjectBuilder().build()).build()
 
-        return factory.toString()
+        return geoJson.toString()
     }
 }

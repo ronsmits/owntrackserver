@@ -18,7 +18,8 @@ data class OwnTrackResponse(
     val tst: Long = Instant.now().epochSecond,
     val wtst: Long = Instant.now().epochSecond,
     val vac: Int = 0,
-    val vel: Int = 0
+    val vel: Int = 0,
+    val rad: Int = 0
 ) {
     val datetime
         get() = Instant.ofEpochSecond(tst).atZone(ZoneId.systemDefault()).toLocalDateTime()

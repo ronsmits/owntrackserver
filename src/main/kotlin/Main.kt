@@ -76,8 +76,10 @@ fun main(args: Array<String>) {
 
 val lastSeenMap = mutableMapOf<String, Boolean>()
 fun handleLoc(ctx: Context) {
+    logger.info(ctx.body())
     val receivedLocaton = ctx.body<OwnTrackResponse>()
     logger.info("body is $receivedLocaton at ${receivedLocaton.datetime}")
+    if(receivedLocaton._type == "waypoint") logger.info("ignoring waypoints for now", receivedLocaton)
     val home = when {
         receivedLocaton.event == "leave" && receivedLocaton.desc == "home" -> false
         receivedLocaton.event == "enter" && receivedLocaton.desc == "home" -> true

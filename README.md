@@ -1,4 +1,7 @@
 # owntrackserver
+
+![](https://github.com/ronsmits/owntrackserver/workflows/maven/badge.svg)
+
 http gateway from owntrack to domoticz
 
 [Domoticz](http://domoticz.com) is a Home automation application, [Owntrack](http://owntracks.org) is a location tracker

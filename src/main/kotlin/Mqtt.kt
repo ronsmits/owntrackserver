@@ -1,5 +1,8 @@
 import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
 import org.slf4j.LoggerFactory
+import java.util.*
 
 object Mqtt {
     lateinit var broker: String
@@ -7,7 +10,7 @@ object Mqtt {
 
     val client by lazy {
         logger.info("setting up client")
-        MqttClient(broker, "owntrack-server")
+        MqttClient(broker, UUID.randomUUID().toString(), MemoryPersistence())
     }
 
     fun connect(broker: String) {

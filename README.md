@@ -61,3 +61,6 @@ The server is started with :
 \-m should point to your mqtt broker defaults to `tcp://127.0.0.1:1883`
 
 \-c optionally change the contextroot from the default `"/"` 
+
+## Credits
+The distance function in Location is based on the haversine implementation from [jferrao](https://gist.github.com/jferrao/cb44d09da234698a7feee68ca895f491)

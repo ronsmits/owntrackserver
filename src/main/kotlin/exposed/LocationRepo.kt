@@ -6,7 +6,12 @@ import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import todatetime
+import usersList
 import java.lang.Math.toRadians
+import javax.json.Json
+import javax.json.JsonArray
+import javax.json.JsonArrayBuilder
+import javax.json.JsonObject
 import kotlin.math.*
 
 object LocationTable : Table("locations") {
@@ -29,9 +34,24 @@ data class Location(
     val datetime by lazy {
         timestamp.todatetime()
     }
+
     companion object {
         const val earthRadiusKm: Double = 6372.8
     }
+
+    fun geoJsonMarker(): JsonObject {
+        val factory = Json.createObjectBuilder().add(
+            "geometry",
+            Json.createObjectBuilder().add("type", "Point").add(
+                "coordinates",
+                Json.createArrayBuilder().add(longitude).add(latitude)
+            )
+        ).add("type", "Feature").add("properties", Json.createObjectBuilder().build()).build()
+
+        return factory!!
+    }
+
+    fun geoPoint(): JsonArray = Json.createArrayBuilder().add(longitude).add(latitude).build()!!
 
     override fun toString(): String = "$id $deviceId $latitude $longitude $velocity ${timestamp.todatetime()}"
 
@@ -56,15 +76,52 @@ fun LocationTable.rowToLocation(row: ResultRow): Location = Location(
     velocity = row[velocity]
 )
 
+fun Location.user() = usersList.filter { this.deviceId == deviceId }.first().username
 fun ResultRow.toLocation() = LocationTable.rowToLocation(this)
 
 fun main() {
     Database.connect("jdbc:h2:tcp://domoticz.home/~/test", "org.h2.Driver")
-    transaction {
+//    transaction {
+//        LocationTable.select { LocationTable.deviceId eq 23 }
+//            .orderBy(LocationTable.timestamp)
+//            .map { it.toLocation() }
+//            .windowed(2)
+//            .filter{it[0].distance(it[1])>0}.flatten().sortedBy { it.timestamp }.distinctBy { it.id }.forEach { println(it) }
+//    }
+
+    val list = transaction {
         LocationTable.select { LocationTable.deviceId eq 23 }
             .orderBy(LocationTable.timestamp)
+            .asSequence()
             .map { it.toLocation() }
+            .filter { it.datetime.monthValue == 10 && it.datetime.dayOfMonth == 2 }
             .windowed(2)
-            .forEach { println("${it[0].datetime} ${it[0].distance(it[1])}") }
+            .filter { it[0].distance(it[1]) > 0 }
+            .flatten()
+            .sortedBy { it.timestamp }
+            .distinctBy { it.id }
+            .toList()
+
     }
+    println(list.size)
+    toGeoList(list)
+}
+
+fun toGeoList(list: List<Location>) {
+    val factory = Json.createObjectBuilder()
+        .add("type", "Feature")
+        .add("properties", Json.createObjectBuilder())
+        .add(
+            "geometry", Json.createObjectBuilder()
+                .add("type", "LineString")
+                .add("coordinates", coordinateListBuilder(list))
+        )
+
+    println(factory.build().toString())
+}
+
+private fun coordinateListBuilder(list: List<Location>): JsonArrayBuilder {
+    val array = Json.createArrayBuilder()
+    list.forEach { array.add(it.geoPoint()) }
+    return array
 }

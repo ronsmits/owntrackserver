@@ -1,16 +1,16 @@
 [
   {
     "user": "ron",
-    "password": "roVAGbu4tTvR2",
-    "deviceId": 23,
+    "password": "roCGkbUE5bAv.",
+    "deviceId": 1,
     "roles": [
       "REPORT","ADMIN"
     ]
   },
   {
-    "user": "test",
-    "password": "passs",
-    "deviceId": 1,
+    "user": "afonso",
+    "password": "af1SYfcJsMOLY",
+    "deviceId": 2,
     "roles": [
       "REPORT"
     ]

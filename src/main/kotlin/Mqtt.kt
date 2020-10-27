@@ -3,6 +3,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence
 import org.slf4j.LoggerFactory
 import java.util.*
+import javax.json.JsonObject
 
 object Mqtt {
     lateinit var broker: String
@@ -12,6 +13,10 @@ object Mqtt {
         logger.info("setting up client")
         MqttClient(broker, UUID.randomUUID().toString(), MemoryPersistence())
     }
+
+    fun publish(topic: String, message: JsonObject) = publish(topic, message.toString())
+
+    fun publish(topic: String, message: String) = client.publish(topic, MqttMessage(message.toByteArray()))
 
     fun connect(broker: String) {
         this.broker = broker

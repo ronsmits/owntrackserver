@@ -94,21 +94,29 @@ fun setupSodium(path: String) {
     logger.info("library version ${SodiumLibrary.libsodiumVersionString()}")
 }
 
+const val topicBase="owntrack"
+
 fun handleLoc(ctx: Context) {
     //logger.info(ctx.body())
     val stringBody = ctx.body()
     val receivedLocation = Json.createReader(StringReader(stringBody)).readObject()
-    logger.info("received $receivedLocation at ${receivedLocation}")
-    decrypt(receivedLocation.getString("data"))?.run{
-        val topic = "owntrack/${getUserName(this.getString("tid"))}/${this.getString("_type")}"
-        Mqtt.publish(topic, this)
+    logger.info("[${Date()}] - received $receivedLocation at ${receivedLocation}")
+    logger.info(receivedLocation["_type"].toString())
+    when(receivedLocation.getString("_type")) {
+        "waypoint"-> Mqtt.publish("$topicBase/waypoint", receivedLocation)
+        "encrypted"-> decrypt(receivedLocation.getString("data"))?.run {
+            val username = if(this.containsKey("tid")) getUserName(this.getString("tid"))+"/" else ""
+            val topic = "$topicBase/$username${this.getString("_type")}"
+            Mqtt.publish(topic, this)
+        }
+        else-> logger.info("dont know what to do with it")
     }
-
 }
 
 const val nonceLength = 24
 
 fun decrypt(crypted: String): JsonObject? {
+    logger.info("decrypting")
     val decode = Base64.getDecoder().decode(crypted)
     val nonce = decode.copyOfRange(0, nonceLength)
     val messageArray = decode.copyOfRange(nonceLength, decode.size)

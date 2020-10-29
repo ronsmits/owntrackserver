@@ -1,5 +1,6 @@
 import com.muquit.libsodiumjna.SodiumLibrary
 import io.javalin.Javalin
+import io.javalin.apibuilder.ApiBuilder.get
 import io.javalin.apibuilder.ApiBuilder.post
 import io.javalin.core.security.Role
 import io.javalin.core.security.SecurityUtil.roles
@@ -7,6 +8,7 @@ import io.javalin.core.util.Header
 import io.javalin.http.Context
 import io.javalin.http.Handler
 import joptsimple.OptionParser
+import joptsimple.OptionSet
 import org.apache.commons.codec.digest.Crypt.crypt
 import org.slf4j.LoggerFactory
 import java.io.FileInputStream
@@ -86,9 +88,21 @@ fun main(args: Array<String>) {
 
     app.routes {
         post("/loc", { ctx -> handleLoc(ctx) }, roles(ApiRoles.REPORT))
+        get("/config", {ctx->showConfig(ctx, optionset)}, roles(ApiRoles.REPORT))
     }
 }
 
+fun showConfig(ctx: Context, optionSet: OptionSet) {
+
+    ctx.json(Json.createObjectBuilder()
+        .add("broker", optionSet.valueOf("b") as String)
+        .add("userfile", optionSet.valueOf("f") as String)
+        .add("webcontext", optionSet.valueOf("c") as String)
+        .add("webport", (optionSet.valueOf("p") as Int).toString())
+        .add("sodiumlibpath", (optionSet.valueOf("l") as String))
+        .build()
+    )
+}
 fun setupSodium(path: String) {
     SodiumLibrary.setLibraryPath(path)
     logger.info("library version ${SodiumLibrary.libsodiumVersionString()}")
@@ -101,7 +115,6 @@ fun handleLoc(ctx: Context) {
     val stringBody = ctx.body()
     val receivedLocation = Json.createReader(StringReader(stringBody)).readObject()
     logger.info("[${Date()}] - received $receivedLocation at ${receivedLocation}")
-    logger.info(receivedLocation["_type"].toString())
     when(receivedLocation.getString("_type")) {
         "waypoint"-> Mqtt.publish("$topicBase/waypoint", receivedLocation)
         "encrypted"-> decrypt(receivedLocation.getString("data"))?.run {
@@ -116,7 +129,6 @@ fun handleLoc(ctx: Context) {
 const val nonceLength = 24
 
 fun decrypt(crypted: String): JsonObject? {
-    logger.info("decrypting")
     val decode = Base64.getDecoder().decode(crypted)
     val nonce = decode.copyOfRange(0, nonceLength)
     val messageArray = decode.copyOfRange(nonceLength, decode.size)

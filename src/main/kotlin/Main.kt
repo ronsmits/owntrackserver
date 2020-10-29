@@ -88,21 +88,9 @@ fun main(args: Array<String>) {
 
     app.routes {
         post("/loc", { ctx -> handleLoc(ctx) }, roles(ApiRoles.REPORT))
-        get("/config", {ctx->showConfig(ctx, optionset)}, roles(ApiRoles.REPORT))
     }
 }
 
-fun showConfig(ctx: Context, optionSet: OptionSet) {
-
-    ctx.json(Json.createObjectBuilder()
-        .add("broker", optionSet.valueOf("b") as String)
-        .add("userfile", optionSet.valueOf("f") as String)
-        .add("webcontext", optionSet.valueOf("c") as String)
-        .add("webport", (optionSet.valueOf("p") as Int).toString())
-        .add("sodiumlibpath", (optionSet.valueOf("l") as String))
-        .build()
-    )
-}
 fun setupSodium(path: String) {
     SodiumLibrary.setLibraryPath(path)
     logger.info("library version ${SodiumLibrary.libsodiumVersionString()}")
